@@ -1,0 +1,18 @@
+{
+  "name": "smart-desk",
+  "private": true,
+  "scripts": {
+    "dev": "turbo run dev --filter=web --filter=console-app --filter=@smart-desk/api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "clean": "turbo run clean"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@10.13.1",
+  "engines": {
+    "node": ">=20"
+  }
+}

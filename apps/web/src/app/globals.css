@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --brand: #4f46e5;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --border: color-mix(in oklab, #0f172a 10%, transparent);
+  --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  --math: #059669;
+  --physics: #0284c7;
+  --chemistry: #d97706;
+  --subject: var(--math);
+}
+
+.dark {
+  --bg: #0b0f19;
+  --surface: #111827;
+  --brand: #4f46e5;
+  --text-primary: #f9fafb;
+  --text-secondary: #9ca3af;
+  --border: color-mix(in oklab, #f9fafb 12%, transparent);
+  --shadow: 0 8px 30px -8px rgba(0, 0, 0, 0.45);
+  --math: #10b981;
+  --physics: #06b6d4;
+  --chemistry: #f59e0b;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: var(--font-display), "Segoe UI", sans-serif;
+}
+
+.hb-grid {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 10%, color-mix(in oklab, var(--brand) 18%, transparent), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 90% 20%, color-mix(in oklab, var(--math) 14%, transparent), transparent 50%),
+    linear-gradient(180deg, color-mix(in oklab, var(--surface) 40%, transparent), transparent 40%);
+}
+
+.hb-fade-in {
+  animation: hb-fade 480ms ease both;
+}
+
+@keyframes hb-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.hb-float {
+  animation: hb-float 5s ease-in-out infinite;
+}
+
+@keyframes hb-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.landing-atmosphere {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 70% at 15% 20%, rgba(79, 70, 229, 0.28), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 85% 15%, rgba(16, 185, 129, 0.16), transparent 50%),
+    radial-gradient(ellipse 60% 40% at 70% 80%, rgba(6, 182, 212, 0.12), transparent 55%),
+    linear-gradient(180deg, #070b14 0%, #0b0f19 55%, #070b14 100%);
+}
+
+.landing-chalk-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.12) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent 75%);
+}
+
+.landing-rise {
+  animation: landing-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing-rise-delay-1 {
+  animation-delay: 90ms;
+}
+
+.landing-rise-delay-2 {
+  animation-delay: 170ms;
+}
+
+.landing-rise-delay-3 {
+  animation-delay: 260ms;
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.landing-board-plane {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  width: min(920px, 92vw);
+  height: 220px;
+  transform: translateX(-50%) perspective(900px) rotateX(58deg);
+  border: 1px solid rgba(165, 180, 252, 0.28);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(17, 24, 39, 0.95), rgba(11, 15, 25, 0.8)),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(148, 163, 184, 0.08) 40px
+    );
+  box-shadow:
+    0 0 0 1px rgba(79, 70, 229, 0.12),
+    0 40px 80px rgba(0, 0, 0, 0.45);
+  animation: landing-board 6s ease-in-out infinite;
+}
+
+.landing-board-plane::before {
+  content: "";
+  position: absolute;
+  inset: 18% 12% auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #10b981, #06b6d4, #f59e0b, transparent);
+  opacity: 0.85;
+}
+
+.landing-board-plane::after {
+  content: "∫  f(x) dx";
+  position: absolute;
+  right: 10%;
+  top: 42%;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 14px;
+  color: rgba(165, 180, 252, 0.85);
+  transform: rotateX(-58deg);
+}
+
+@keyframes landing-board {
+  0%,
+  100% {
+    transform: translateX(-50%) perspective(900px) rotateX(58deg) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) perspective(900px) rotateX(58deg) translateY(-10px);
+  }
+}
