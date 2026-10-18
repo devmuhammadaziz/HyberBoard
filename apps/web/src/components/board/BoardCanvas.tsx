@@ -22,6 +22,7 @@ import {
   pointsToPath,
   selectionBounds,
   createId,
+  createGraphElement,
   eraseAlongStroke,
   eraseAtPoint,
   elementsShallowEqual,
@@ -35,11 +36,19 @@ import {
 } from "@/lib/board-utils";
 import { BoardToolbar } from "./BoardToolbar";
 import { SelectionMenu } from "./SelectionMenu";
+import { GraphElementView } from "./GraphElementView";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { captureSelectionPng } from "@/lib/capture-selection";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { t } from "@/lib/i18n";
+import type { PlotData } from "@smart-desk/types";
+import {
+  applyGraphHandleDrag,
+  hitGraphHandle,
+  screenToPlot,
+  type GraphHandle,
+} from "@/lib/plot-geometry";
 
 const SUBJECT_COLOR: Record<Subject, string> = {
   math: "var(--math)",
@@ -71,6 +80,10 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
     startElements: BoardElement[];
     ids: string[];
   } | null>(null);
+  const [plotEdit, setPlotEdit] = useState<{
+    id: string;
+    handle: GraphHandle;
+  } | null>(null);
   const [marquee, setMarquee] = useState<{ a: Point; b: Point } | null>(null);
   const [erasing, setErasing] = useState<{ last: Point } | null>(null);
   const [eraserCursor, setEraserCursor] = useState<Point | null>(null);
@@ -89,6 +102,8 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
     value: string;
   } | null>(null);
   const dirtyRef = useRef(false);
+  const textInputRef = useRef<HTMLInputElement>(null);
+  const textReadyRef = useRef(false);
   const elements = board.elements;
 
   const style = useMemo(
@@ -179,6 +194,21 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
     const pt = toWorld(e.clientX, e.clientY);
 
     if (tool === "select") {
+      // Edit graph endpoints before moving the whole element
+      if (selectedIds.length === 1) {
+        const graphEl = elements.find(
+          (el) => el.id === selectedIds[0] && el.type === "graph"
+        );
+        if (graphEl) {
+          const handle = hitGraphHandle(graphEl, pt, 14 / viewport.zoom);
+          if (handle) {
+            (e.target as Element).setPointerCapture?.(e.pointerId);
+            setPlotEdit({ id: graphEl.id, handle });
+            return;
+          }
+        }
+      }
+
       const hit = [...elements].reverse().find((el) => hitTest(el, pt.x, pt.y));
       if (hit) {
         const ids = e.shiftKey
@@ -198,8 +228,25 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
     }
 
     if (tool === "text") {
+      // Prevent the same click from immediately blurring the new input
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Commit any open draft before placing a new one
+      if (textDraft && textReadyRef.current) {
+        const prev = (textInputRef.current?.value ?? textDraft.value).trim();
+        if (prev) {
+          const el = createTextElement(textDraft.x, textDraft.y, prev, {
+            ...style,
+            fontSize: style.fontSize ?? 22,
+          });
+          pushHistory([...elements, el]);
+        }
+      }
+
       const screen = toScreen(pt);
       setSelectedIds([]);
+      textReadyRef.current = false;
       setTextDraft({
         x: pt.x,
         y: pt.y,
@@ -263,6 +310,30 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
         dirtyRef.current = true;
       }
       setErasing({ last: pt });
+      return;
+    }
+
+    if (plotEdit) {
+      const el = elements.find((row) => row.id === plotEdit.id);
+      if (el?.type === "graph") {
+        const math = screenToPlot(el, pt);
+        const plot = applyGraphHandleDrag(
+          (el.meta?.plot || {}) as PlotData,
+          plotEdit.handle,
+          math
+        );
+        const next = elements.map((row) =>
+          row.id === el.id
+            ? {
+                ...row,
+                meta: { ...row.meta, plot },
+                updatedAt: Date.now(),
+              }
+            : row
+        );
+        onBoardChange({ ...board, elements: next });
+        dirtyRef.current = true;
+      }
       return;
     }
 
@@ -339,6 +410,12 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
       if (eraseDirtyRef.current) pushHistory(elements);
       setErasing(null);
       eraseDirtyRef.current = false;
+      return;
+    }
+
+    if (plotEdit) {
+      pushHistory(elements);
+      setPlotEdit(null);
       return;
     }
 
@@ -425,7 +502,65 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
     setSelectedIds([el.id]);
   };
 
+  const placeGraphNearSelection = (plot: PlotData) => {
+    const inkColor = selected[0]?.style.color || style.color || "#60A5FA";
+    const is3d = plot.mode === "3d" || plot.kind === "cartesian3d";
+    // Square-ish frame so 1:1 aspect lock looks correct
+    const size = bounds
+      ? Math.max(300, Math.min(420, Math.max(bounds.width, bounds.height) * 1.15))
+      : 360;
+    const gap = 28;
+    const base = bounds
+      ? {
+          x: bounds.x + bounds.width + gap,
+          y: bounds.y + bounds.height / 2 - size * 0.45,
+        }
+      : { x: 80, y: 80 };
+    const el = createGraphElement(
+      base.x,
+      base.y,
+      plot,
+      {
+        ...style,
+        color: inkColor,
+        font: "computer-modern",
+      },
+      size
+    );
+    el.width = size;
+    el.height = is3d ? size * 0.92 : size;
+    pushHistory([...elements, el]);
+    setSelectedIds([el.id]);
+  };
+
+  const updateGraphPlot = (id: string, plot: PlotData) => {
+    const next = elements.map((row) =>
+      row.id === id
+        ? { ...row, meta: { ...row.meta, plot }, updatedAt: Date.now() }
+        : row
+    );
+    onBoardChange({ ...board, elements: next });
+    dirtyRef.current = true;
+  };
+
   const handleAiResult = (result: AiResponse) => {
+    const viz = result.visualization;
+    if (viz && (viz.type === "graph" || viz.type === "diagram" || viz.type === "chart")) {
+      const data = viz.data as PlotData;
+      if (data.vectors?.length || data.points?.length) {
+        placeGraphNearSelection({
+          kind: "cartesian",
+          title: result.title || data.title,
+          vectors: data.vectors,
+          points: data.points,
+          xMin: data.xMin,
+          xMax: data.xMax,
+          yMin: data.yMin,
+          yMax: data.yMax,
+        });
+        return;
+      }
+    }
     // Never spawn explanation cards — write the answer/latex as board text.
     const answer =
       result.latex?.trim() ||
@@ -438,15 +573,35 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
 
   const commitTextDraft = () => {
     if (!textDraft) return;
-    const value = textDraft.value.trim();
+    // Ignore the bogus blur that fires right as the input mounts
+    if (!textReadyRef.current) return;
+    const value = (textInputRef.current?.value ?? textDraft.value).trim();
     if (value) {
-      const el = createTextElement(textDraft.x, textDraft.y, value, style);
+      const el = createTextElement(textDraft.x, textDraft.y, value, {
+        ...style,
+        fontSize: style.fontSize ?? 22,
+      });
       pushHistory([...elements, el]);
       setSelectedIds([el.id]);
     }
     setTextDraft(null);
-    setTool("select");
+    textReadyRef.current = false;
+    // Stay on Text tool so another click can write again
   };
+
+  // Focus the text field after click finishes (avoids instant blur → select)
+  useEffect(() => {
+    if (!textDraft) {
+      textReadyRef.current = false;
+      return;
+    }
+    const t = window.setTimeout(() => {
+      textReadyRef.current = true;
+      textInputRef.current?.focus();
+      textInputRef.current?.select();
+    }, 30);
+    return () => window.clearTimeout(t);
+  }, [textDraft?.x, textDraft?.y]);
 
   const clearBoard = async () => {
     await api(`/boards/${board.id}/clear`, { method: "POST" });
@@ -542,6 +697,13 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
               el={el}
               selected={selectedIds.includes(el.id)}
               dimmed={dimUnselected && !selectedIds.includes(el.id)}
+              onGraphHandleDown={(handle, ev) => {
+                ev.stopPropagation();
+                svgRef.current?.setPointerCapture?.(ev.pointerId);
+                setSelectedIds([el.id]);
+                setPlotEdit({ id: el.id, handle });
+              }}
+              onGraphPlotChange={(plot) => updateGraphPlot(el.id, plot)}
             />
           ))}
 
@@ -666,14 +828,21 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
 
       {textDraft && (
         <input
-          autoFocus
+          ref={textInputRef}
           value={textDraft.value}
           onChange={(e) => setTextDraft({ ...textDraft, value: e.target.value })}
-          onBlur={commitTextDraft}
+          onBlur={() => commitTextDraft()}
           onKeyDown={(e) => {
-            if (e.key === "Enter") commitTextDraft();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              textReadyRef.current = true;
+              commitTextDraft();
+            }
             if (e.key === "Escape") {
+              e.preventDefault();
               setTextDraft(null);
+              textReadyRef.current = false;
+              // Escape exits text mode
               setTool("select");
             }
           }}
@@ -683,9 +852,13 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
             top: textDraft.screenY,
             color: style.color,
             fontFamily: fontCss(font),
+            fontSize: 18,
           }}
           placeholder="Type here…"
-          onPointerDown={(e) => e.stopPropagation()}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+          }}
+          onPointerUp={(e) => e.stopPropagation()}
         />
       )}
 
@@ -732,6 +905,7 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
             );
           }}
           onSolveAnswer={placeAnswerNearSelection}
+          onPlot={placeGraphNearSelection}
           onResult={handleAiResult}
           captureImage={async () => {
             if (!svgRef.current || !bounds) return null;
@@ -757,10 +931,14 @@ function ElementView({
   el,
   selected,
   dimmed,
+  onGraphHandleDown,
+  onGraphPlotChange,
 }: {
   el: BoardElement;
   selected: boolean;
   dimmed: boolean;
+  onGraphHandleDown?: (handle: GraphHandle, e: React.PointerEvent) => void;
+  onGraphPlotChange?: (plot: PlotData) => void;
 }) {
   const opacity = dimmed ? 0.35 : el.style.opacity;
   const dash =
@@ -829,6 +1007,18 @@ function ElementView({
           markerEnd={el.type === "arrow" ? "url(#arrowhead)" : undefined}
         />
       </g>
+    );
+  }
+
+  if (el.type === "graph") {
+    return (
+      <GraphElementView
+        el={el}
+        opacity={opacity}
+        selected={selected}
+        onHandleDown={onGraphHandleDown}
+        onPlotChange={onGraphPlotChange}
+      />
     );
   }
 

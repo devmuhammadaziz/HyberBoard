@@ -15,10 +15,13 @@ import {
   X,
   Minus,
   Equal,
+  LineChart,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { tryLocalSolve } from "@/lib/math-solve";
+import { parsePlotFromText, plotDataFromApi } from "@/lib/plot-from-text";
+import type { PlotData } from "@smart-desk/types";
 import clsx from "clsx";
 
 type Props = {
@@ -34,6 +37,7 @@ type Props = {
   onDelete: () => void;
   onDashToggle: () => void;
   onSolveAnswer: (answer: string) => void;
+  onPlot: (plot: PlotData) => void;
   onResult: (result: AiResponse) => void;
   captureImage: () => Promise<string | null>;
 };
@@ -53,6 +57,7 @@ export function SelectionMenu({
   onDelete,
   onDashToggle,
   onSolveAnswer,
+  onPlot,
   onResult,
   captureImage,
 }: Props) {
@@ -65,6 +70,64 @@ export function SelectionMenu({
 
   const activeFeatures =
     groups.find((g) => g.id === activeGroup)?.features ?? groups[0]?.features ?? [];
+
+  const plot = async () => {
+    setBusy("plot");
+    setError(null);
+    try {
+      const local = parsePlotFromText(selectionText);
+      if (local) {
+        onPlot(local);
+        return;
+      }
+
+      const imageBase64 = await captureImage();
+      if (!selectionText.trim() && !imageBase64) {
+        setError("Select an equation, points, or vector first");
+        return;
+      }
+
+      const data = await api<{
+        result: {
+          mode?: "2d" | "3d";
+          title?: string;
+          rawLatex?: string;
+          normalizedExpression?: string | null;
+          expression?: string | null;
+          variable?: "x" | "y";
+          functionType?: string;
+          suggestedDomain?: [number, number] | null;
+          points?: Array<{ x: number; y: number; label?: string }>;
+          vectors?: Array<{
+            x: number;
+            y: number;
+            label?: string;
+            from?: { x: number; y: number };
+          }>;
+        };
+      }>("/ai/plot", {
+        method: "POST",
+        body: JSON.stringify({
+          text: selectionText || undefined,
+          imageBase64: imageBase64 || undefined,
+          subject,
+          locale,
+        }),
+      });
+
+      // Client-side mathjs sampling only — never trust LLM coordinates for curves
+      const parsed = plotDataFromApi(data.result);
+      if (!parsed) {
+        setError("Could not build a graph from that selection");
+        return;
+      }
+      onPlot(parsed);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Plot failed");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const solve = async () => {
     setBusy("solve");
@@ -167,6 +230,21 @@ export function SelectionMenu({
             <Equal className="h-3.5 w-3.5" />
           )}
           Solve
+        </button>
+
+        <button
+          type="button"
+          title="Plot graph"
+          disabled={!!busy}
+          onClick={() => void plot()}
+          className="inline-flex items-center gap-1 rounded-full bg-sky-500 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-60"
+        >
+          {busy === "plot" ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <LineChart className="h-3.5 w-3.5" />
+          )}
+          Graph
         </button>
 
         <button

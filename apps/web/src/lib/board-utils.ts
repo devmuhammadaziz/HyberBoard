@@ -3,6 +3,7 @@ import type {
   BoardElement,
   BoardFont,
   BoardStrokeStyle,
+  PlotData,
   Point,
 } from "@smart-desk/types";
 
@@ -112,6 +113,30 @@ export function createShapeElement(
   };
 }
 
+export function createGraphElement(
+  x: number,
+  y: number,
+  plot: PlotData,
+  style: BoardStrokeStyle,
+  size = 320
+): BoardElement {
+  const now = Date.now();
+  return {
+    id: createId(),
+    type: "graph",
+    x,
+    y,
+    width: size,
+    height: size * 0.88,
+    text: plot.title || "Graph",
+    style: { ...style, font: style.font || "computer-modern" },
+    meta: { plot },
+    featureId: "math.vector-visualizer",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function createAiResultElement(
   x: number,
   y: number,
@@ -142,6 +167,14 @@ export function createAiResultElement(
 }
 
 export function getBounds(el: BoardElement) {
+  if (el.type === "graph") {
+    return {
+      x: el.x,
+      y: el.y,
+      width: Math.max(el.width ?? 280, 80),
+      height: Math.max(el.height ?? 240, 80),
+    };
+  }
   if (el.type === "text" || el.type === "ai-result") {
     const fontSize = el.style.fontSize ?? (el.type === "ai-result" ? 22 : 16);
     const text = el.latex || el.text || "";
@@ -262,6 +295,22 @@ export function scaleElements(
           ...el.style,
           width: Math.max(0.5, el.style.width * strokeScale),
         },
+        updatedAt: now,
+      };
+    }
+
+    if (el.type === "graph") {
+      const tl = mapAbs({ x: el.x, y: el.y });
+      const br = mapAbs({
+        x: el.x + (el.width || 280),
+        y: el.y + (el.height || 240),
+      });
+      return {
+        ...el,
+        x: Math.min(tl.x, br.x),
+        y: Math.min(tl.y, br.y),
+        width: Math.max(Math.abs(br.x - tl.x), 80),
+        height: Math.max(Math.abs(br.y - tl.y), 80),
         updatedAt: now,
       };
     }

@@ -60,7 +60,99 @@ export type BoardElementType =
   | "arrow"
   | "text"
   | "equation"
-  | "ai-result";
+  | "ai-result"
+  | "graph";
+
+export interface PlotVector {
+  x: number;
+  y: number;
+  label?: string;
+  color?: string;
+  /** If set, vector starts at this point instead of the origin. */
+  from?: { x: number; y: number };
+}
+
+export interface PlotPoint {
+  x: number;
+  y: number;
+  label?: string;
+  color?: string;
+}
+
+export interface PlotCurve {
+  /** Dense polyline samples in math coordinates */
+  points: Array<{ x: number; y: number }>;
+  label?: string;
+  color?: string;
+  /** Original expression, e.g. "x^2 - 4x + 3" */
+  expression?: string;
+}
+
+export interface PlotSurface3D {
+  /** Flattened samples for a wireframe surface */
+  samples: Array<{ x: number; y: number; z: number }>;
+  expression?: string;
+  label?: string;
+  color?: string;
+  resolution?: number;
+}
+
+export type PlotFunctionType =
+  | "polynomial"
+  | "trigonometric"
+  | "rational"
+  | "exponential"
+  | "implicit"
+  | "vector"
+  | "points"
+  | "surface3d"
+  | "unknown";
+
+/** Strict OCR / expression payload — never contains sampled coordinates from the LLM. */
+export interface PlotExpressionSpec {
+  rawLatex?: string;
+  normalizedExpression: string;
+  variable?: "x" | "y";
+  functionType?: PlotFunctionType;
+  suggestedDomain?: [number, number];
+  mode?: "2d" | "3d";
+  title?: string;
+}
+
+export interface PlotCriticalPoint {
+  x: number;
+  y: number;
+  kind: "root" | "y-intercept" | "extrema" | "vertex" | "point";
+  label?: string;
+}
+
+export interface PlotData {
+  kind?: "cartesian" | "cartesian3d";
+  title?: string;
+  mode?: "2d" | "3d";
+  /** Source expression(s) — frontend samples these with mathjs */
+  expressionSpec?: PlotExpressionSpec;
+  /** Function curves (parabola, sine, etc.) — always client-sampled */
+  curves?: PlotCurve[];
+  vectors?: PlotVector[];
+  points?: PlotPoint[];
+  criticalPoints?: PlotCriticalPoint[];
+  /** Axis of symmetry x = c (quadratics) */
+  symmetryX?: number;
+  /** 3D surface samples */
+  surface?: PlotSurface3D;
+  /** Optional RHS expressions the client can re-sample */
+  expressions?: string[];
+  xMin?: number;
+  xMax?: number;
+  yMin?: number;
+  yMax?: number;
+  zMin?: number;
+  zMax?: number;
+  /** Locked 1:1 pixels-per-unit (canvas display hint) */
+  pixelsPerUnit?: number;
+  autoFit?: boolean;
+}
 
 export interface BoardElement {
   id: string;
@@ -76,7 +168,7 @@ export interface BoardElement {
   style: BoardStrokeStyle;
   subject?: Subject;
   featureId?: string;
-  meta?: Record<string, unknown>;
+  meta?: Record<string, unknown> & { plot?: PlotData };
   createdAt: number;
   updatedAt: number;
 }

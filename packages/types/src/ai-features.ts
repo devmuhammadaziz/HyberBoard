@@ -69,7 +69,7 @@ export const AI_FEATURES: AiFeatureMeta[] = [
   { id: "math.fourier", subject: "math", group: "calculus", name: "Fourier Synthesizer", description: "Wave synthesis from series.", icon: "wave" },
   { id: "math.geometric-net-3d", subject: "math", group: "geometry", name: "3D Geometric Net", description: "Fold 2D nets into solids.", icon: "box" },
   { id: "math.unit-circle", subject: "math", group: "geometry", name: "Unit Circle", description: "Trig on the unit circle.", icon: "circle" },
-  { id: "math.vector-visualizer", subject: "math", group: "geometry", name: "Vector Products", description: "Cross/dot product visuals.", icon: "vector" },
+  { id: "math.vector-visualizer", subject: "math", group: "geometry", name: "Vector Graph", description: "Plot vectors on a coordinate plane.", icon: "vector" },
   { id: "math.polar-graph", subject: "math", group: "geometry", name: "Polar Grapher", description: "Polar coordinate graphs.", icon: "polar" },
   { id: "math.conic-fitter", subject: "math", group: "geometry", name: "Conic Auto-Fitter", description: "Fit circle/ellipse/parabola/hyperbola.", icon: "ellipse" },
   { id: "math.voronoi", subject: "math", group: "geometry", name: "Voronoi Diagram", description: "Generate Voronoi partitions.", icon: "map" },

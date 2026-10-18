@@ -2,7 +2,7 @@ export const config = {
   port: Number(process.env.PORT || 3001),
   mongodbUri: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/hyperboard",
   openaiApiKey: process.env.OPENAI_API_KEY || "",
-  openaiModel: process.env.OPENAI_MODEL || "gpt-4o-mini",
+  openaiModel: process.env.OPENAI_MODEL || "gpt-4o",
   jwtSecret: process.env.JWT_SECRET || "hyperboard-dev-secret-change-me",
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",

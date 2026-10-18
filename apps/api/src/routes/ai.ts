@@ -118,6 +118,144 @@ Rules:
     }
   )
   .post(
+    "/plot",
+    async ({ request, body, set }) => {
+      const user = await getUserFromAuthHeader(request.headers.get("authorization"));
+      if (!user) {
+        set.status = 401;
+        return { error: "Unauthorized" };
+      }
+
+      const text = (body.text || "").trim();
+      const imageBase64 = body.imageBase64?.replace(/^data:image\/\w+;base64,/, "") || null;
+
+      if (!text && !imageBase64) {
+        set.status = 400;
+        return { error: "Nothing to plot" };
+      }
+
+      try {
+        const openai = getOpenAI();
+        const messages: Array<{
+          role: "system" | "user";
+          content:
+            | string
+            | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
+        }> = [
+          {
+            role: "system",
+            content: `You are HyperBoard Graph OCR. Extract math for client-side plotting.
+NEVER return sampled (x,y) points for a function curve. NEVER invent SVG/paths/Béziers.
+Return ONLY JSON:
+{
+  "mode": "2d" | "3d",
+  "title": string,
+  "rawLatex": string,
+  "normalizedExpression": string,
+  "variable": "x",
+  "functionType": "polynomial" | "trigonometric" | "rational" | "exponential" | "implicit" | "vector" | "points" | "surface3d" | "unknown",
+  "suggestedDomain": [number, number],
+  "points": [{ "x": number, "y": number, "label"?: string }],
+  "vectors": [{ "x": number, "y": number, "label"?: string, "from"?: { "x": number, "y": number } }]
+}
+Rules:
+- y = f(x) → mode "2d", put RHS only in normalizedExpression (mathjs ASCII: x^2, 4*x, sin(x)). points/vectors must be [].
+- z = f(x,y) → mode "3d", RHS in normalizedExpression.
+- Explicit coordinates (x1,y1…) or column vectors → leave normalizedExpression "" and fill points/vectors only.
+- suggestedDomain: center on key features (e.g. parabola vertex). Default [-10,10].
+- No explanations.`,
+          },
+        ];
+
+        if (imageBase64) {
+          messages.push({
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text:
+                  text ||
+                  "OCR this handwriting into the JSON schema. For y=f(x) return normalizedExpression only — do NOT sample the curve.",
+              },
+              {
+                type: "image_url",
+                image_url: { url: `data:image/png;base64,${imageBase64}` },
+              },
+            ],
+          });
+        } else {
+          messages.push({ role: "user", content: text });
+        }
+
+        const completion = await openai.chat.completions.create({
+          model: config.openaiModel,
+          temperature: 0,
+          response_format: { type: "json_object" },
+          messages: messages as never,
+        });
+
+        const raw = completion.choices[0]?.message?.content || "{}";
+        const parsed = JSON.parse(raw) as {
+          mode?: "2d" | "3d";
+          title?: string;
+          rawLatex?: string;
+          normalizedExpression?: string | null;
+          expression?: string | null;
+          variable?: "x" | "y";
+          functionType?: string;
+          suggestedDomain?: [number, number] | null;
+          points?: Array<{ x: number; y: number; label?: string }>;
+          vectors?: Array<{
+            x: number;
+            y: number;
+            label?: string;
+            from?: { x: number; y: number };
+          }>;
+        };
+
+        // Strip any hallucinated curve samples if a model sneaks them in
+        const result = {
+          mode: parsed.mode === "3d" ? "3d" : "2d",
+          title: parsed.title,
+          rawLatex: parsed.rawLatex,
+          normalizedExpression:
+            parsed.normalizedExpression || parsed.expression || "",
+          variable: parsed.variable || "x",
+          functionType: parsed.functionType || "unknown",
+          suggestedDomain: parsed.suggestedDomain || undefined,
+          // Only keep geometry when there is NO function expression
+          points: parsed.normalizedExpression || parsed.expression
+            ? []
+            : parsed.points || [],
+          vectors: parsed.normalizedExpression || parsed.expression
+            ? []
+            : parsed.vectors || [],
+        };
+
+        const hasExpr = Boolean(String(result.normalizedExpression || "").trim());
+        const hasGeom = Boolean(result.points.length || result.vectors.length);
+
+        if (!hasExpr && !hasGeom) {
+          set.status = 400;
+          return { error: "Could not find something to plot" };
+        }
+
+        return { result };
+      } catch (err) {
+        set.status = 400;
+        return { error: err instanceof Error ? err.message : "Plot failed" };
+      }
+    },
+    {
+      body: t.Object({
+        text: t.Optional(t.String()),
+        imageBase64: t.Optional(t.String()),
+        subject: t.Optional(t.String()),
+        locale: t.Optional(t.String()),
+      }),
+    }
+  )
+  .post(
     "/run",
     async ({ request, body, set }) => {
       const user = await getUserFromAuthHeader(request.headers.get("authorization"));
