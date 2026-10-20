@@ -9,6 +9,8 @@ export const config = {
   webOrigin: process.env.WEB_ORIGIN || "http://localhost:4000",
   consoleOrigin: process.env.CONSOLE_ORIGIN || "http://localhost:3002",
   adminSecretKey: process.env.ADMIN_SECRET_KEY || "admin-dev-secret",
+  adminUsername: process.env.ADMIN_USERNAME || "admin",
+  adminPassword: process.env.ADMIN_PASSWORD || "demo1234",
   r2: {
     accountId: process.env.R2_ACCOUNT_ID || "",
     endpoint: process.env.R2_ENDPOINT || process.env.CLOUDFLARE_R2_ENDPOINT || "",

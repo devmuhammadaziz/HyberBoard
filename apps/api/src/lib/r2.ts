@@ -62,3 +62,79 @@ export async function listUserSnapshots(prefix: string) {
   );
   return result.Contents ?? [];
 }
+
+export function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
+}
+
+export async function getR2StorageStats() {
+  const s3 = getClient();
+  if (!s3 || !config.r2.bucketName) {
+    return {
+      status: "not_configured" as const,
+      configured: false,
+      bucket: config.r2.bucketName || "none",
+      endpoint: config.r2.endpoint ? new URL(config.r2.endpoint).hostname : "not set",
+      totalObjects: 0,
+      totalBytes: 0,
+      formattedSize: "0 B",
+      avgObjectSize: "0 B",
+      recentSnapshots: [],
+      error: null,
+    };
+  }
+
+  try {
+    const command = new ListObjectsV2Command({
+      Bucket: config.r2.bucketName,
+      MaxKeys: 1000,
+    });
+    const response = await s3.send(command);
+    const contents = response.Contents || [];
+    const totalBytes = contents.reduce((acc, item) => acc + (item.Size || 0), 0);
+    const totalObjects = contents.length;
+
+    const recentSnapshots = contents
+      .slice()
+      .sort((a, b) => (b.LastModified?.getTime() || 0) - (a.LastModified?.getTime() || 0))
+      .slice(0, 15)
+      .map((item) => ({
+        key: item.Key || "unknown",
+        size: item.Size || 0,
+        formattedSize: formatBytes(item.Size || 0),
+        lastModified: item.LastModified?.toISOString() || null,
+        storageClass: item.StorageClass || "STANDARD",
+      }));
+
+    return {
+      status: "connected" as const,
+      configured: true,
+      bucket: config.r2.bucketName,
+      endpoint: new URL(config.r2.endpoint).hostname,
+      totalObjects,
+      totalBytes,
+      formattedSize: formatBytes(totalBytes),
+      avgObjectSize: totalObjects > 0 ? formatBytes(Math.round(totalBytes / totalObjects)) : "0 B",
+      recentSnapshots,
+      error: null,
+    };
+  } catch (err) {
+    return {
+      status: "error" as const,
+      configured: true,
+      bucket: config.r2.bucketName,
+      endpoint: config.r2.endpoint ? new URL(config.r2.endpoint).hostname : "error",
+      totalObjects: 0,
+      totalBytes: 0,
+      formattedSize: "0 B",
+      avgObjectSize: "0 B",
+      recentSnapshots: [],
+      error: err instanceof Error ? err.message : "Failed to connect to R2",
+    };
+  }
+}
+
