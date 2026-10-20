@@ -104,6 +104,7 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
   const dirtyRef = useRef(false);
   const textInputRef = useRef<HTMLInputElement>(null);
   const textReadyRef = useRef(false);
+  const [spacePressed, setSpacePressed] = useState(false);
   const elements = board.elements;
 
   const style = useMemo(
@@ -126,21 +127,169 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
     [board, history, historyIndex, onBoardChange]
   );
 
-  const undo = () => {
+  const undo = useCallback(() => {
     if (historyIndex <= 0) return;
     const idx = historyIndex - 1;
     setHistoryIndex(idx);
     onBoardChange({ ...board, elements: history[idx] });
     dirtyRef.current = true;
-  };
+  }, [historyIndex, history, onBoardChange, board]);
 
-  const redo = () => {
+  const redo = useCallback(() => {
     if (historyIndex >= history.length - 1) return;
     const idx = historyIndex + 1;
     setHistoryIndex(idx);
     onBoardChange({ ...board, elements: history[idx] });
     dirtyRef.current = true;
-  };
+  }, [historyIndex, history, onBoardChange, board]);
+
+  // ═════════ Excalidraw-Style Keyboard Shortcuts ═════════
+  useEffect(() => {
+    const isEditingText = (target: EventTarget | null) => {
+      const el = target as HTMLElement | null;
+      if (!el) return false;
+      return (
+        el.tagName === "INPUT" ||
+        el.tagName === "TEXTAREA" ||
+        el.isContentEditable ||
+        Boolean(el.closest("input, textarea, [contenteditable='true']"))
+      );
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isEditingText(e.target)) return;
+      if (textDraft) return;
+
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+
+      // Undo / Redo
+      if (isCmdOrCtrl) {
+        if (e.key === "z" || e.key === "Z") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+          return;
+        }
+        if (e.key === "y" || e.key === "Y") {
+          e.preventDefault();
+          redo();
+          return;
+        }
+        if (e.key === "a" || e.key === "A") {
+          e.preventDefault();
+          setSelectedIds(elements.map((el) => el.id));
+          setTool("select");
+          return;
+        }
+      }
+
+      // Spacebar for temporary pan
+      if (e.code === "Space" && !e.repeat) {
+        e.preventDefault();
+        setSpacePressed(true);
+        return;
+      }
+
+      // Ignore when holding Alt or Cmd/Ctrl for tool selection
+      if (e.altKey || isCmdOrCtrl) return;
+
+      switch (e.key) {
+        case "1":
+        case "v":
+        case "V":
+          e.preventDefault();
+          setTool("select");
+          break;
+        case "2":
+        case "h":
+        case "H":
+          e.preventDefault();
+          setTool("hand");
+          break;
+        case "3":
+        case "p":
+        case "P":
+          e.preventDefault();
+          setTool("pen");
+          break;
+        case "4":
+        case "e":
+        case "E":
+          e.preventDefault();
+          setTool("eraser");
+          break;
+        case "5":
+        case "t":
+        case "T":
+          e.preventDefault();
+          setTool("text");
+          break;
+        case "6":
+        case "r":
+        case "R":
+          e.preventDefault();
+          setTool("rect");
+          break;
+        case "7":
+        case "o":
+        case "O":
+        case "c":
+        case "C":
+          e.preventDefault();
+          setTool("ellipse");
+          break;
+        case "8":
+        case "l":
+        case "L":
+          e.preventDefault();
+          setTool("line");
+          break;
+        case "9":
+        case "a":
+        case "A":
+          e.preventDefault();
+          setTool("arrow");
+          break;
+        case "0":
+          e.preventDefault();
+          setViewport((prev) => ({ ...prev, zoom: 1 }));
+          break;
+        case "Escape":
+          e.preventDefault();
+          if (selectedIds.length > 0) {
+            setSelectedIds([]);
+          } else {
+            setTool("select");
+          }
+          break;
+        case "Delete":
+        case "Backspace":
+          if (selectedIds.length > 0) {
+            e.preventDefault();
+            const remaining = elements.filter((el) => !selectedIds.includes(el.id));
+            pushHistory(remaining);
+            setSelectedIds([]);
+          }
+          break;
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setSpacePressed(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [textDraft, elements, selectedIds, pushHistory, undo, redo]);
 
   const toWorld = (clientX: number, clientY: number): Point => {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -186,7 +335,7 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
   }, [bounds, viewport]);
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button === 1 || tool === "hand" || (e.button === 0 && e.altKey)) {
+    if (e.button === 1 || tool === "hand" || spacePressed || (e.button === 0 && e.altKey)) {
       setPanning({ x: e.clientX - viewport.x, y: e.clientY - viewport.y });
       return;
     }
@@ -681,7 +830,20 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
       <svg
         ref={svgRef}
         className="absolute inset-0 h-full w-full touch-none"
-        style={{ cursor: tool === "eraser" ? "none" : undefined }}
+        style={{
+          cursor:
+            tool === "eraser"
+              ? "none"
+              : tool === "hand" || spacePressed
+              ? panning
+                ? "grabbing"
+                : "grab"
+              : tool === "text"
+              ? "text"
+              : tool === "select"
+              ? "default"
+              : "crosshair",
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
