@@ -4,6 +4,8 @@ import Link from "next/link";
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { ArrowLeft } from "lucide-react";
+import { HyperBoardLogo } from "@/components/HyperBoardLogo";
 
 function LoginInner() {
   const { user, loading } = useAuth();
@@ -17,33 +19,66 @@ function LoginInner() {
   }, [user, loading, router]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#070B14] text-[#F4F7FB]">
-      <div className="landing-atmosphere opacity-70" aria-hidden />
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
-        <Link href="/" className="mb-10 text-sm text-[#94A3B8] transition hover:text-white">
-          ← Back to HyperBoard
-        </Link>
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#06080F] px-6 text-[#F4F7FB] selection:bg-indigo-500 selection:text-white">
+      {/* ══ Ambient Ethereal Glow — Soft & Deep, No Hard Outlines ══ */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute left-1/2 top-1/3 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-tr from-indigo-600/15 via-purple-600/10 to-transparent blur-[140px]" />
+        <div className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-cyan-600/10 blur-[120px]" />
+      </div>
 
-        <h1 className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight">
+      {/* Top minimal navigation */}
+      <div className="absolute left-8 top-8 z-20">
+        <Link
+          href="/"
+          className="group inline-flex items-center gap-2 text-xs font-medium text-zinc-400 transition-colors hover:text-white"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+          <span>HyperBoard</span>
+        </Link>
+      </div>
+
+      {/* ══ Centered Minimalist Content (Zero borders, pure focus) ══ */}
+      <div className="relative z-10 w-full max-w-sm text-center">
+        {/* Custom HyperBoard Brand Mark */}
+        <div className="mx-auto mb-8 flex justify-center">
+          <HyperBoardLogo size={48} withGlow />
+        </div>
+
+        {/* Minimal Typography */}
+        <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-white sm:text-4xl">
           Sign in
         </h1>
-        <p className="mt-3 text-[#94A3B8]">
-          Use your Google account to open your STEM classroom desk.
+        <p className="mt-2 text-sm text-zinc-400">
+          Open your interactive STEM blackboard
         </p>
 
-        <a
-          href="/api/auth/google"
-          className="mt-10 inline-flex items-center justify-center gap-3 rounded-2xl border border-white/15 bg-white px-5 py-3.5 text-sm font-semibold text-[#0F172A] transition hover:bg-[#F8FAFC]"
-        >
-          <GoogleMark />
-          Continue with Google
-        </a>
-
+        {/* Error notification */}
         {error && (
-          <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          <div className="mt-6 rounded-xl bg-rose-500/10 p-3 text-xs text-rose-300">
             {decodeURIComponent(error)}
-          </p>
+          </div>
         )}
+
+        {/* Google Authentication Button — Clean, Tactile, Modern */}
+        <div className="mt-10">
+          <a
+            href="/api/auth/google"
+            className="group relative flex w-full items-center justify-center gap-3 rounded-full bg-white px-6 py-3.5 text-sm font-semibold text-zinc-900 shadow-xl shadow-black/40 transition-all duration-200 hover:bg-zinc-100 hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <GoogleMark />
+            <span>Continue with Google</span>
+          </a>
+        </div>
+
+        {/* Micro-copy footer */}
+        <p className="mt-6 text-xs text-zinc-500">
+          Free for educators & students · No password needed
+        </p>
+      </div>
+
+      {/* Bottom Subtle Brand Mark */}
+      <div className="absolute bottom-8 text-center text-[11px] text-zinc-600">
+        HyperBoard Studio · AI for STEM
       </div>
     </main>
   );
@@ -76,8 +111,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-h-screen place-items-center bg-[#070B14] text-[#94A3B8]">
-          Loading…
+        <main className="grid min-h-screen place-items-center bg-[#06080F] text-zinc-500">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
         </main>
       }
     >

@@ -116,7 +116,7 @@ export function SelectionMenu({
       });
 
       // Client-side mathjs sampling only — never trust LLM coordinates for curves
-      const parsed = plotDataFromApi(data.result);
+      const parsed = plotDataFromApi(data.result as any);
       if (!parsed) {
         setError("Could not build a graph from that selection");
         return;
