@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { ArrowLeft } from "lucide-react";
 import { HyperBoardLogo } from "@/components/HyperBoardLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 function LoginInner() {
   const { user, loading } = useAuth();
@@ -19,22 +20,23 @@ function LoginInner() {
   }, [user, loading, router]);
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[#06080F] px-6 text-[#F4F7FB] selection:bg-indigo-500 selection:text-white">
+    <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-[var(--bg)] px-6 text-[var(--text-primary)] selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       {/* ══ Ambient Ethereal Glow — Soft & Deep, No Hard Outlines ══ */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute left-1/2 top-1/3 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-tr from-indigo-600/15 via-purple-600/10 to-transparent blur-[140px]" />
         <div className="absolute right-1/4 bottom-1/4 h-[400px] w-[400px] rounded-full bg-cyan-600/10 blur-[120px]" />
       </div>
 
-      {/* Top minimal navigation */}
-      <div className="absolute left-8 top-8 z-20">
+      {/* Top navigation & Theme Toggle */}
+      <div className="absolute inset-x-8 top-8 z-20 flex items-center justify-between">
         <Link
           href="/"
-          className="group inline-flex items-center gap-2 text-xs font-medium text-zinc-400 transition-colors hover:text-white"
+          className="group inline-flex items-center gap-2 text-xs font-medium text-zinc-400 transition-colors hover:text-zinc-900 dark:hover:text-white"
         >
           <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
           <span>HyperBoard</span>
         </Link>
+        <ThemeToggle />
       </div>
 
       {/* ══ Centered Minimalist Content (Zero borders, pure focus) ══ */}

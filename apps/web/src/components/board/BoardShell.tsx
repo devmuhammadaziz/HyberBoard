@@ -18,6 +18,7 @@ import { api } from "@/lib/api";
 import { formatSessionTitle } from "@/lib/session-title";
 import type { BoardDocument } from "@smart-desk/types";
 import clsx from "clsx";
+import { toggleThemeWithTransition } from "@/lib/theme";
 
 export function BoardShell({
   children,
@@ -126,8 +127,12 @@ export function BoardShell({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => void setTheme(theme === "dark" ? "light" : "dark")}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg)]"
+              onClick={(e) => {
+                void toggleThemeWithTransition(e, undefined, (newTheme) => {
+                  void setTheme(newTheme);
+                });
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-[var(--bg)] transition-colors"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               {theme === "dark" ? "Light" : "Dark"}

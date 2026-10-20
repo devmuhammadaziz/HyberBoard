@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { HyperBoardLogo } from "@/components/HyperBoardLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function LandingPage() {
   const { user, loading } = useAuth();
@@ -36,19 +37,19 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="landing-root min-h-screen overflow-x-hidden bg-[#05070E] text-[#F4F7FB] selection:bg-indigo-500 selection:text-white">
+    <div className="landing-root min-h-screen overflow-x-hidden bg-[var(--bg)] text-[var(--text-primary)] selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       {/* ═════════ Minimalist Glass Header (No harsh borders) ═════════ */}
       <header
         className="fixed inset-x-0 top-0 z-50 transition-all duration-300"
         style={{
-          background: scrollY > 30 ? "rgba(5, 7, 14, 0.85)" : "transparent",
+          background: scrollY > 30 ? "color-mix(in srgb, var(--bg) 85%, transparent)" : "transparent",
           backdropFilter: scrollY > 30 ? "blur(24px)" : "none",
         }}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 sm:px-10">
           <Link href="/" className="flex items-center gap-3">
             <HyperBoardLogo size={26} />
-            <span className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-white">
+            <span className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight text-[var(--text-primary)]">
               HyperBoard
             </span>
           </Link>
@@ -60,7 +61,8 @@ export default function LandingPage() {
             <a href="#workflow" className="transition hover:text-white">Workflow</a>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link
               href="/login"
               className="text-sm font-medium text-zinc-400 transition hover:text-white"
