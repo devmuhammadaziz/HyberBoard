@@ -319,7 +319,18 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
   const selectionText = useMemo(
     () =>
       selected
-        .map((el) => el.latex || el.text || "")
+        .map((el) => {
+          if (el.latex) return el.latex;
+          if (el.text) return el.text;
+          if (el.type === "graph" && el.meta?.plot) {
+            return (
+              el.meta.plot.expressionSpec?.normalizedExpression ||
+              el.meta.plot.title ||
+              ""
+            );
+          }
+          return "";
+        })
         .filter(Boolean)
         .join("\n"),
     [selected]
@@ -327,11 +338,19 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
 
   const menuAnchor = useMemo(() => {
     if (!bounds) return null;
-    const mid = toScreen({
+    const top = toScreen({
       x: bounds.x + bounds.width / 2,
       y: bounds.y,
     });
-    return mid;
+    const bottom = toScreen({
+      x: bounds.x + bounds.width / 2,
+      y: bounds.y + bounds.height,
+    });
+    return {
+      x: top.x,
+      yTop: top.y,
+      yBottom: bottom.y,
+    };
   }, [bounds, viewport]);
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -1028,7 +1047,8 @@ export function BoardCanvas({ board, onBoardChange }: Props) {
         <SelectionMenu
           subject={board.subject}
           screenX={menuAnchor.x}
-          screenY={menuAnchor.y}
+          screenYTop={menuAnchor.yTop}
+          screenYBottom={menuAnchor.yBottom}
           selectionText={selectionText}
           boardId={board.id}
           boardTitle={board.title}

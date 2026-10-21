@@ -129,6 +129,7 @@ export function BoardToolbar({
       <KeyboardShortcutsModal
         open={shortcutsOpen}
         onClose={() => setShortcutsOpen(false)}
+        subject={subject}
       />
 
       {/* ═══════════════════════════════════════════════════════════════════════
