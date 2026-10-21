@@ -19,9 +19,11 @@ type Props<T extends string> = {
   align?: "left" | "right" | "center";
   size?: "sm" | "md";
   className?: string;
+  buttonClassName?: string;
   menuClassName?: string;
   openUp?: boolean;
   ariaLabel?: string;
+  borderless?: boolean;
 };
 
 export function CustomDropdown<T extends string>({
@@ -32,9 +34,11 @@ export function CustomDropdown<T extends string>({
   align = "left",
   size = "sm",
   className,
+  buttonClassName,
   menuClassName,
   openUp = true,
   ariaLabel,
+  borderless = false,
 }: Props<T>) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -49,12 +53,18 @@ export function CustomDropdown<T extends string>({
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", handleOutside);
+    document.addEventListener("keydown", handleKey);
     return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", handleOutside);
+      document.removeEventListener("keydown", handleKey);
     };
+    function handleOutside(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
   }, [open]);
 
   return (
@@ -67,10 +77,13 @@ export function CustomDropdown<T extends string>({
         aria-label={ariaLabel || placeholder}
         onClick={() => setOpen((v) => !v)}
         className={clsx(
-          "group inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg)]/80 text-[var(--text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition",
-          "hover:border-[color-mix(in_oklab,var(--brand)_45%,var(--border))] hover:bg-[var(--surface)]",
-          open && "border-[var(--brand)] bg-[var(--surface)] ring-2 ring-[color-mix(in_oklab,var(--brand)_25%,transparent)]",
-          size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3.5 py-2.5 text-sm"
+          "group inline-flex items-center gap-2 rounded-xl text-[var(--text-primary)] transition",
+          borderless
+            ? "bg-[var(--surface)]/90 shadow-sm hover:bg-[var(--surface)]"
+            : "border border-[var(--border)] bg-[var(--bg)]/80 hover:border-[color-mix(in_oklab,var(--brand)_45%,var(--border))] hover:bg-[var(--surface)]",
+          open && "ring-2 ring-[color-mix(in_oklab,var(--brand)_25%,transparent)] bg-[var(--surface)]",
+          size === "sm" ? "px-2.5 py-1.5 text-xs" : "px-3.5 py-2.5 text-sm",
+          buttonClassName
         )}
       >
         {selected?.accent && (
@@ -95,8 +108,10 @@ export function CustomDropdown<T extends string>({
           id={listId}
           role="listbox"
           className={clsx(
-            "absolute z-[100] min-w-[11.5rem] overflow-hidden rounded-2xl border border-[var(--border)]",
-            "bg-[color-mix(in_oklab,var(--surface)_92%,transparent)] p-1.5 shadow-[0_18px_50px_-20px_rgba(0,0,0,0.55)] backdrop-blur-xl",
+            "absolute z-[100] min-w-[12rem] overflow-hidden rounded-2xl p-1.5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.35)] backdrop-blur-2xl transition-all duration-150 animate-in fade-in zoom-in-95",
+            borderless
+              ? "bg-[var(--surface)]/95 shadow-2xl shadow-black/25"
+              : "border border-[var(--border)] bg-[color-mix(in_oklab,var(--surface)_92%,transparent)]",
             openUp ? "bottom-[calc(100%+8px)]" : "top-[calc(100%+8px)]",
             align === "left" && "left-0",
             align === "right" && "right-0",

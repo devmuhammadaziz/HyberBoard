@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { BoardFont, BoardTool, Subject } from "@smart-desk/types";
 import { BOARD_FONTS } from "@smart-desk/types";
 import {
@@ -17,8 +17,6 @@ import {
   Hand,
   Trash2,
   HelpCircle,
-  Baseline,
-  Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { t } from "@/lib/i18n";
@@ -64,29 +62,9 @@ export function BoardToolbar({
 }: Props) {
   const { locale } = useAuth();
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [fontMenuOpen, setFontMenuOpen] = useState(false);
-  const fontMenuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!fontMenuOpen) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (!fontMenuRef.current?.contains(e.target as Node)) {
-        setFontMenuOpen(false);
-      }
-    };
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setFontMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handleOutside);
-    document.addEventListener("keydown", handleKey);
-    return () => {
-      document.removeEventListener("mousedown", handleOutside);
-      document.removeEventListener("keydown", handleKey);
-    };
-  }, [fontMenuOpen]);
-
-  // Main Core Interaction Tools (Placed in Bottom Bar, 1 - 5)
-  const mainTools: {
+  // Core drawing and interaction tools (1 - 5)
+  const coreTools: {
     id: BoardTool;
     icon: React.ReactNode;
     label: string;
@@ -99,7 +77,7 @@ export function BoardToolbar({
     { id: "text", icon: <Type className="h-5 w-5" />, label: t(locale, "text"), shortcut: "5" },
   ];
 
-  // Geometric Shape Tools (Placed in Left Vertical Dock, 6 - 9)
+  // Geometric shape tools (6 - 9)
   const shapeTools: {
     id: BoardTool;
     icon: React.ReactNode;
@@ -127,18 +105,18 @@ export function BoardToolbar({
         "group relative flex h-11 w-11 items-center justify-center rounded-xl transition duration-150 select-none",
         tool === item.id
           ? "bg-[var(--brand)] text-white shadow-md shadow-indigo-500/25 scale-[1.03]"
-          : "text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
+          : "text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)] active:scale-95"
       )}
     >
       {item.icon}
 
-      {/* Floating keycap badge (Top-Right, clear & never colliding with the icon) */}
+      {/* Excalidraw-style corner shortcut (flat, no bubble, no border, no protruding circle) */}
       <span
         className={clsx(
-          "pointer-events-none absolute -top-1.5 -right-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-md px-1 font-mono text-[10px] font-bold leading-none shadow-xs transition",
+          "pointer-events-none absolute bottom-1 right-1.5 font-mono text-[9px] font-semibold leading-none select-none transition-opacity",
           tool === item.id
-            ? "bg-white text-indigo-700 ring-2 ring-indigo-500/20 scale-105"
-            : "bg-[var(--bg)] text-[var(--text-primary)] border border-[var(--border)] group-hover:border-[var(--brand)] group-hover:text-[var(--brand)]"
+            ? "text-white/75"
+            : "text-[var(--text-secondary)] opacity-40 group-hover:opacity-90"
         )}
       >
         {item.shortcut}
@@ -154,115 +132,19 @@ export function BoardToolbar({
       />
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          RIGHT VERTICAL DOCK (Shapes, Colors, Typography)
-          Positioned on the right side of the screen (right-4, vertically centered)
+          TOP-RIGHT SINGLE UNIFIED BLOCK: Subject, Autosave, Clear, Shortcuts
+          All identical height (h-8), beautifully symmetrical and borderless
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center">
-        <aside
-          aria-label="Shapes and styles dock"
-          className="pointer-events-auto flex flex-col items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 p-2 shadow-2xl shadow-black/25 backdrop-blur-2xl"
-        >
-          {/* Shapes Section (6 - 9) */}
-          <div className="flex flex-col items-center gap-1.5">
-            {shapeTools.map(renderToolButton)}
-          </div>
-
-          <div className="my-0.5 h-px w-7 bg-[var(--border)]" />
-
-          {/* Color Palette Section */}
-          <div className="flex flex-col items-center gap-2 py-0.5">
-            {COLORS.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => onColorChange(c)}
-                className={clsx(
-                  "h-6 w-6 rounded-full border transition hover:scale-115 active:scale-95",
-                  color === c
-                    ? "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--surface)] scale-110 shadow-sm"
-                    : "border-black/20 opacity-85 hover:opacity-100"
-                )}
-                style={{ background: c }}
-                title={`Color: ${c}`}
-              />
-            ))}
-          </div>
-
-          <div className="my-0.5 h-px w-7 bg-[var(--border)]" />
-
-          {/* Font Selector Trigger & Flyout Menu (opens to the left) */}
-          <div ref={fontMenuRef} className="relative">
-            <button
-              type="button"
-              title="Font family"
-              onClick={() => setFontMenuOpen((v) => !v)}
-              className={clsx(
-                "flex h-10 w-10 items-center justify-center rounded-xl transition duration-150",
-                fontMenuOpen
-                  ? "bg-[var(--brand)] text-white shadow-md shadow-indigo-500/25"
-                  : "text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
-              )}
-            >
-              <Baseline className="h-5 w-5" />
-            </button>
-
-            {fontMenuOpen && (
-              <div
-                role="menu"
-                className="absolute right-full top-0 mr-3 z-50 min-w-[13rem] overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 p-1.5 shadow-[0_18px_50px_-15px_rgba(0,0,0,0.55)] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150"
-              >
-                <div className="px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Typography
-                </div>
-                {BOARD_FONTS.map((f) => {
-                  const active = f.id === font;
-                  return (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => {
-                        onFontChange(f.id);
-                        setFontMenuOpen(false);
-                      }}
-                      className={clsx(
-                        "flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left transition",
-                        active
-                          ? "bg-[color-mix(in_oklab,var(--brand)_16%,transparent)] text-[var(--text-primary)]"
-                          : "text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
-                      )}
-                    >
-                      <div className="min-w-0">
-                        <div className="truncate text-xs font-medium">{f.label}</div>
-                        <div className="truncate text-[10px] text-[var(--text-secondary)]">
-                          {f.id === "computer-modern"
-                            ? "LaTeX / academic"
-                            : f.id === "architects-daughter"
-                              ? "Handwritten notes"
-                              : "Clean UI text"}
-                        </div>
-                      </div>
-                      {active && <Check className="h-4 w-4 text-[var(--brand)] shrink-0" />}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </aside>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          BOTTOM HORIZONTAL DOCK (Subject, Main Tools 1-5, History, Utilities)
-          Centered horizontally at the bottom of the screen
-         ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-4">
-        <div className="pointer-events-auto flex max-w-[96vw] flex-wrap items-center justify-center gap-2.5 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/95 px-4 py-2.5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-          {/* 1. Subject Selector */}
+      <div className="pointer-events-none absolute right-4 top-4 z-40 flex items-center">
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-2xl bg-[var(--surface)]/90 p-1.5 shadow-xl shadow-black/10 backdrop-blur-2xl">
+          {/* Subject Selector */}
           <CustomDropdown
             value={subject}
             onChange={onSubjectChange}
             ariaLabel={t(locale, "subject")}
-            openUp
+            openUp={false}
+            borderless
+            align="left"
             options={[
               { value: "math", label: t(locale, "math"), accent: "#10B981", hint: "Equations · graphs" },
               { value: "physics", label: t(locale, "physics"), accent: "#06B6D4", hint: "Forces · fields" },
@@ -270,54 +152,57 @@ export function BoardToolbar({
             ]}
           />
 
-          <div className="mx-1 h-7 w-px bg-[var(--border)]" />
-
-          {/* 2. Main Feature Tools (1 - 5) */}
-          <div className="flex items-center gap-1.5">
-            {mainTools.map(renderToolButton)}
-          </div>
-
-          {/* Contextual Eraser Size Options */}
-          {tool === "eraser" && (
+          {/* Autosaved Status Badge (Identical h-8 height) */}
+          {saveLabel && (
             <>
-              <div className="mx-1 h-7 w-px bg-[var(--border)]" />
-              <div className="flex items-center gap-1 rounded-xl bg-[var(--bg)] p-1">
-                {ERASER_SIZES.map((size) => (
-                  <button
-                    key={size.id}
-                    type="button"
-                    title={`Eraser ${size.label}`}
-                    onClick={() => onEraserSizeChange(size.id)}
-                    className={clsx(
-                      "flex h-8 w-8 items-center justify-center rounded-lg transition",
-                      eraserSize === size.id
-                        ? "bg-[var(--brand)] text-white"
-                        : "text-[var(--text-secondary)] hover:bg-[var(--surface)]"
-                    )}
-                  >
-                    <span
-                      className="rounded-full bg-current"
-                      style={{
-                        width: size.id === "s" ? 6 : size.id === "m" ? 11 : 16,
-                        height: size.id === "s" ? 6 : size.id === "m" ? 11 : 16,
-                        opacity: 0.9,
-                      }}
-                    />
-                  </button>
-                ))}
+              <div className="h-4 w-px bg-current/10" />
+              <div className="flex h-8 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-[var(--text-secondary)]">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{saveLabel}</span>
               </div>
             </>
           )}
 
-          <div className="mx-1 h-7 w-px bg-[var(--border)]" />
+          {/* Keyboard Shortcuts Button (Identical h-8 size) */}
+          <button
+            type="button"
+            title="Keyboard shortcuts (?)"
+            onClick={() => setShortcutsOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg)] hover:text-[var(--text-primary)] active:scale-95"
+            aria-label="Keyboard shortcuts"
+          >
+            <HelpCircle className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
-          {/* 3. Undo / Redo Actions */}
+      {/* ═══════════════════════════════════════════════════════════════════════
+          BOTTOM DOCKS WRAPPER: Unified flex flow with gap-3 so they NEVER overlap
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex items-center justify-center gap-3 px-4">
+        {/* Main Tools Dock (h-14, borderless frosted glass) */}
+        <div className="pointer-events-auto flex h-14 shrink-0 items-center gap-1.5 rounded-2xl bg-[var(--surface)]/90 px-2 shadow-2xl shadow-black/25 backdrop-blur-2xl">
+          {/* Tools 1 - 5: Select, Hand, Pen, Eraser, Text */}
+          <div className="flex items-center gap-1.5">
+            {coreTools.map(renderToolButton)}
+          </div>
+
+          <div className="mx-1 h-7 w-px bg-current/10" />
+
+          {/* Tools 6 - 9: Rectangle, Ellipse, Line, Arrow */}
+          <div className="flex items-center gap-1.5">
+            {shapeTools.map(renderToolButton)}
+          </div>
+
+          <div className="mx-1 h-7 w-px bg-current/10" />
+
+          {/* Undo / Redo Actions */}
           <div className="flex items-center gap-1">
             <button
               type="button"
               title={`${t(locale, "undo")} (⌘Z)`}
               onClick={onUndo}
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg)] hover:text-[var(--text-primary)] active:scale-95"
             >
               <Undo2 className="h-5 w-5" />
             </button>
@@ -325,43 +210,103 @@ export function BoardToolbar({
               type="button"
               title={`${t(locale, "redo")} (⌘⇧Z)`}
               onClick={onRedo}
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg)] hover:text-[var(--text-primary)] active:scale-95"
             >
               <Redo2 className="h-5 w-5" />
             </button>
           </div>
+        </div>
 
-          <div className="mx-1.5 h-7 w-px bg-[var(--border)]" />
-
-          {/* 4. Utilities: Clear All, Shortcuts, Save Status */}
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              title="Clear everything"
-              onClick={onClearRequest}
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3 text-xs font-medium text-red-400 transition hover:bg-red-500/20"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear all
-            </button>
-
-            <button
-              type="button"
-              title="Keyboard shortcuts (?)"
-              onClick={() => setShortcutsOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-xl text-[var(--text-secondary)] transition hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
-              aria-label="Keyboard shortcuts"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </button>
+        {/* Dedicated Color & Styling Feature Bar (h-14, matching height & clean gap) */}
+        <aside
+          aria-label="Color and style properties"
+          className="pointer-events-auto flex h-14 shrink-0 items-center gap-3 rounded-2xl bg-[var(--surface)]/90 px-4 shadow-2xl shadow-black/25 backdrop-blur-2xl"
+        >
+          {/* 7 Color Swatches */}
+          <div className="flex items-center gap-2">
+            {COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => onColorChange(c)}
+                className={clsx(
+                  "h-7 w-7 rounded-full transition hover:scale-115 active:scale-90",
+                  c === "#F9FAFB" && "border border-neutral-300 dark:border-white/25",
+                  color === c
+                    ? "ring-2 ring-[var(--brand)] ring-offset-2 ring-offset-[var(--surface)] scale-110 shadow-sm"
+                    : "opacity-80 hover:opacity-100"
+                )}
+                style={{ background: c }}
+                title={`Color: ${c}`}
+              />
+            ))}
           </div>
 
-          {saveLabel && (
-            <span className="ml-1 rounded-full bg-[var(--bg)] px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-              {saveLabel}
-            </span>
+          <div className="h-7 w-px bg-current/10" />
+
+          {/* Contextual Eraser sizes (when eraser is active) */}
+          {tool === "eraser" ? (
+            <div className="flex items-center gap-1.5">
+              {ERASER_SIZES.map((size) => (
+                <button
+                  key={size.id}
+                  type="button"
+                  title={`Eraser ${size.label}`}
+                  onClick={() => onEraserSizeChange(size.id)}
+                  className={clsx(
+                    "flex h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium transition",
+                    eraserSize === size.id
+                      ? "bg-[var(--brand)] text-white shadow-sm"
+                      : "text-[var(--text-secondary)] hover:bg-[var(--bg)] hover:text-[var(--text-primary)]"
+                  )}
+                >
+                  <span
+                    className="rounded-full bg-current"
+                    style={{
+                      width: size.id === "s" ? 6 : size.id === "m" ? 10 : 14,
+                      height: size.id === "s" ? 6 : size.id === "m" ? 10 : 14,
+                    }}
+                  />
+                  <span>{size.label}</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            /* Font Selector (Always accessible, aligns to right edge so it never overflows screen) */
+            <CustomDropdown
+              value={font}
+              onChange={onFontChange}
+              ariaLabel="Font"
+              openUp
+              borderless
+              align="right"
+              buttonClassName="h-10 px-3"
+              options={BOARD_FONTS.map((f) => ({
+                value: f.id,
+                label: f.label,
+                hint:
+                  f.id === "computer-modern"
+                    ? "LaTeX / academic"
+                    : f.id === "architects-daughter"
+                      ? "Handwritten"
+                      : "Clean UI text",
+              }))}
+            />
           )}
-        </div>
+
+          <div className="h-7 w-px bg-current/10" />
+
+          {/* Clear Canvas Action (at the end of the menu bar) */}
+          <button
+            type="button"
+            title="Clear canvas"
+            onClick={onClearRequest}
+            className="flex h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-semibold text-red-400 transition hover:bg-red-500/15 active:scale-95 shrink-0"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span>Clear</span>
+          </button>
+        </aside>
       </div>
     </>
   );
